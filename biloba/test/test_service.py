@@ -10,6 +10,33 @@ import gevent
 from biloba import service
 
 
+class NoddyService(service.Service):
+    """
+    Simple test service
+    """
+    def __init__(self):
+        super(NoddyService, self).__init__()
+        self.watched = []
+
+    def do_start(self):
+        """
+        Start a noddy service
+        """
+        self.spawn(self.noddy_likes_pies)
+
+    def noddy_likes_pies(self):
+        """
+        Run noddy service
+        """
+        while True:
+            for s in ('noddy', 'likes', 'pies'):
+                print "TEST: %s" % s
+                gevent.sleep(1)
+
+    def watch_service(self, child):
+        self.watched.append(child)
+
+
 def make_service(logger=None):
     my_service = service.Service()
 
@@ -69,7 +96,7 @@ class ServiceTestCase(unittest.TestCase):
         """
         Ensure that starting a service works correctly.
         """
-        my_service = make_service()
+        my_service = NoddyService()
 
         self.event_fired = False
 
@@ -80,6 +107,7 @@ class ServiceTestCase(unittest.TestCase):
 
         self.assertFalse(my_service.started)
         my_service.start()
+
         self.assertTrue(my_service.started)
         self.assertTrue(self.event_fired)
 
@@ -174,7 +202,7 @@ class ServiceTestCase(unittest.TestCase):
         """
         Ensure that `stop`ping a service works correctly.
         """
-        my_service = make_service()
+        my_service = NoddyService()
 
         my_service.start()
 
@@ -219,7 +247,7 @@ class ServiceTestCase(unittest.TestCase):
         """
         Any greenlets in `service.services` must be `stop`ped.
         """
-        my_service = make_service()
+        my_service = NoddyService()
         my_service.start()
 
         mock_greenlet = mock.Mock()
@@ -332,20 +360,19 @@ class ServiceTestCase(unittest.TestCase):
 
         self.assertTrue(self.executed)
 
-    @mock.patch.object(service.Service, 'spawn')
-    def test_add_service_start(self, mock_spawn):
+    def test_add_service_start(self):
         """
         Adding a child service when the parent service is started.
         """
-        my_service = make_service()
+        my_service = NoddyService()
         mock_service = mock.Mock()
 
         my_service.start()
 
         my_service.add_service(mock_service)
+        gevent.sleep(0.0)
 
-        mock_spawn.assert_called_with(my_service.watch_service, mock_service)
-
+        self.assertEqual(my_service.watched, [mock_service])
         self.assertEqual(my_service.services, [mock_service])
 
     def test_teardown(self):
